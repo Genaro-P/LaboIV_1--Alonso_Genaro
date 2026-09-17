@@ -17,27 +17,25 @@ Ademas, el .place() nos da un control mas versatil para el posicionamiento,
 siempre que no intentemos redimensionar el widget padre, ya que sino se hace un lio.
 '''
 
-frame_matrix = tk.Frame(ventana, relief= "solid", borderwidth= 2)
-frame_matrix.place(relx= 0.5, rely= 0, anchor= "n")
+frame_matrix = tk.Frame(ventana, relief= "groove", borderwidth= 2)
+frame_matrix.place(relx= 0.5, rely= 0.4, anchor= "center")
 
 #Voy a hacer el grid principal dentro del frame 1, que contendra todo el tema de la matriz
-label_main = tk.Label(frame_matrix, text= "A.x = b", font= ("times new roman", 12))
-label_main.grid(row=0, column=0, columnspan= 10)
+tk.Label(frame_matrix, text= "A.x = b", font= ("times new roman", 12)).grid(row=0, column=0, columnspan= 10)
 
 #No es necesario inicializar variables para ubicar widgets sencillos
 tk.Label(frame_matrix, text= "Matriz A", font= ("times new roman", 10)).grid(row=1,column=0, columnspan=6,padx= 50)
 tk.Label(frame_matrix, text= "Vector b", font= ("times new roman", 10)).grid(row=1, column=6)
 tk.Label(frame_matrix, text= "Vector x", font= ("times new roman", 10)).grid(row=1, column=7)
 
-'''Para crear las entrys, puedo hacer una lista que contenga cada variable e identificarla 
+
+'''
+Para crear las entrys, puedo hacer una lista que contenga cada variable e identificarla 
 con el indice para usar get() cada vez que sea necesario.
 Estaria util hacer que sea una lista bidimensional para usar dos indices enves de uno,
 pero no creo que sea posible.
 '''
 
-#Lista de widgets de tipo Entrada:
-entradas_A = [] #Entradas de la matriz A
-entradas_b = [] #Creo que queda claro
 
 '''
 Esta funcion se la puede asignar a cada entrada para que se ejecute al suceder algun evento,
@@ -48,14 +46,32 @@ Despues, podriamos hacer que esta misma funcion haga aparecer un carte que diga
 "NO PONGAS LETRAS HIJO DE ****" o algo asi
 '''
 
+label_notdigit = tk.Label(ventana, text= "", font= ("times new roman", 12))
+label_notdigit.pack(anchor= "s", side= "bottom")
 def digit(event):
     try:
         int(event.widget.get().strip()) #El metodo .strip() remueve los espacios del string de la entrada
     except:
+        if(event.widget.get().strip() != ""):
+            label_notdigit.config(text= "Por favor, no ingreses letras.")
         event.widget.delete(0, tk.END)
-        event.widget.insert(tk.END, "0")
+    else:
+        label_notdigit.config(text= "")
+
+#Lista de widgets de tipo Entrada:
+entradas_A = [] #Entradas de la matriz A
+entradas_b = [] #Creo que queda claro
+labels_x = [] #Carteles para cada resultado de x 
 
 for i in range(6):
+    if(i>0):
+        entradas_A.append([]) #Creo una lista nueva en cada componente, haciendola una lista bidimensional
+        entradas_b.append(tk.Entry(frame_matrix, width= 6))
+        entradas_b[i-1].grid(row= 2+i, column= 6, padx= 12, pady= 2)
+        entradas_b[i-1].bind("<KeyRelease>", digit)
+        entradas_b[i-1].bind("<FocusOut>", digit)
+        labels_x.append(tk.Label(frame_matrix, text= "", width= 6, relief= "ridge"))
+        labels_x[i-1].grid(row= 2+i, column= 7, padx= 2, pady= 2)
     for j in range(6):
         if((i==0) != (j==0)): #Esto es, basicamente, un XOR
             if(j!=0):
@@ -70,21 +86,15 @@ for i in range(6):
                         ).grid(row= 2+i, column=j)
             else:
                 #Aca ingreso a cada nueva entrada en la lista
-                entradas_A.append(tk.Entry(frame_matrix, width = 4))
+                entradas_A[i-1].append(tk.Entry(frame_matrix, width = 6))
                 #Aca ubico la entrada mas reciente en el grid, si hago las dos
                 #cosas en la misma linea, la lista obtendra un objeto tipo None
-                entradas_A[len(entradas_A)-1].grid(row= 2+i, column= j, padx= 2, pady= 2)
-                entradas_A[len(entradas_A)-1].bind("<FocusOut>", digit)
-    if(i>0):
-        entradas_b.append(tk.Entry(frame_matrix, width= 4))
-        entradas_b[len(entradas_b)-1].grid(row= 2+i, column= 6, padx= 2, pady= 2)
-        entradas_b[len(entradas_b)-1].bind("<FocusOut>", digit)
+                entradas_A[i-1][j-1].grid(row= 2+i, column= j, padx= 2, pady= 2)
+                entradas_A[i-1][j-1].bind("<KeyRelease>", digit)
+                entradas_A[i-1][j-1].bind("<FocusOut>", digit)
     
-                
-'''Las entradas se crean de izquierda a derecha, desde la primera fila, osea, que
-si queres acceder a la entry de la 3ra fila (de la matriz, no de la grid) y 2da columna
-tendrias que acceder a entradas[(3-1)x5 + 2 -1]. El menos 1 es porque los indices empiezan desde el 0.
-3-1 y 2-1 reflejan los valores reales que tomarian 'i' y 'j'.
+'''
+Ahora la lista para acceder a cada entrada es bidimensional y funciona igual que en C
 
 Olvide mencionar que, decidi que nuestra matriz tenga un alcance de hasta 5x5. Si queres lo podemos
 reducir a 4x4 que seria lo minimo necesario.
@@ -92,25 +102,50 @@ reducir a 4x4 que seria lo minimo necesario.
 #Investiguemos como borrar los valores de las entradas
 
 #Este frame tendria todos los botones de abajo, para calcular cosas y borrar valores
-frame_buttons = tk.Frame(ventana, relief= "solid", borderwidth= 2)
-frame_buttons.place(relx= 0.95, rely= 0.5, anchor= "e")
+frame_buttons = tk.Frame(ventana, relief= "groove", borderwidth= 2)
+frame_buttons.place(relx= 1, rely= 0.5, anchor= "e")
 
 def borrar():
     for i in range(5):
         entradas_b[i].delete(0, tk.END)
         for j in range(5):
-            entradas_A[i*5 + j].delete(0, tk.END)
+            entradas_A[i][j].delete(0, tk.END)
 
 
-button_delete = tk.Button(frame_buttons, text= "Borrar valores", command= borrar
+button_delete = tk.Button(frame_buttons, text= "Borrar valores", font= ("times new roman", 8),command= borrar
                           ).pack(padx=2, pady= 5)
-button_det = tk.Button(frame_buttons, text= "Calcular det."
-                       ).pack(padx= 2, pady= 5)
-button_sist = tk.Button(frame_buttons, text= "Calcular solucion x"
+button_sist = tk.Button(frame_buttons, text= "Calcular solucion x", font= ("times new roman", 8)
                         ).pack(padx= 2, pady= 5)
-tk.Label(frame_buttons, text= "Determinante:").pack(padx=2, pady= 5)
-label_det = tk.Label(frame_buttons, text= "", relief= "ridge", borderwidth= 2, width= 8
+button_det = tk.Button(frame_buttons, text= "Calcular det.", font= ("times new roman", 8)
+                       ).pack(padx= 2, pady= 5)
+tk.Label(frame_buttons, text= "Determinante:", font= ("times new roman", 8)).pack(padx=2, pady= 5)
+label_det = tk.Label(frame_buttons, text= "", relief= "ridge", font= ("times new roman", 8), borderwidth= 2, width= 8
                      ).pack(padx= 2, pady= 5)
+
+#Frame para la seccion de sleccion de dimensiones de la matriz y vectores
+
+frame_dimensions = tk.Frame(ventana, relief = "groove", borderwidth= 2)
+frame_dimensions.place(relx= 0.05, rely= 0.5, anchor= "w")
+
+'''tk.Label(frame_dimensions, text= "Dimensiones: ", font= ("times new roman", 8)
+         ).grid(row=0, column=0, columnspan= 2)
+for i in range(4):
+    tk.Label(frame_dimensions, text= f"{i+2} X {i+2}"
+             ).grid(row= i+1, column= 0)'''
+             
+tk.Label(frame_dimensions, text= "Dimensiones: ", font= ("times new roman", 8)
+         ).pack(padx= 2, pady= 5)
+dimensions = []
+def pressed(event):
+    for i in range(4):
+        dimensions[i].config(background= "white")
+    event.widget.config(background= "grey")
+for i in range(4):
+    dimensions.append(tk.Button(frame_dimensions, text= f"{i+2} x {i+2}", font= ("times new roman", 8), 
+    relief= "sunken", background= "white"))
+    dimensions[i].bind("<Button-1>", pressed)
+    dimensions[i].pack(padx= 2, pady= 2)
+#
 
 
 
