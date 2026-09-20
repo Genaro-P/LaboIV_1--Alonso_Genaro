@@ -1,11 +1,12 @@
 import tkinter as tk
+import copy
 
 #URL del repositorio de github: https://github.com/Genaro-P/LaboIV_1--Alonso_Genaro
 #Integrantes: Giuliano Alonso Giambelluca, Perez Genaro.
 
 ventana = tk.Tk()
 ventana.title("Calculadora de determinantes/Sistemas lineales")
-ventana.geometry("600x300")
+ventana.geometry("720x300")
 
 '''
 Los frames son widgets que pueden contener otros widgets, separando los que estan
@@ -42,8 +43,7 @@ Esta funcion se la puede asignar a cada entrada para que se ejecute al suceder a
 el evento en cuestion aca es el '<FocusOut>' que es cada vez que el usuario sale de la entrada, osea,
 cuando con el mouse selecciona otra cosa y deja de escribir ahi.
 
-Despues, podriamos hacer que esta misma funcion haga aparecer un carte que diga 
-"NO PONGAS LETRAS HIJO DE ****" o algo asi
+
 '''
 
 label_notdigit = tk.Label(ventana, text= "", font= ("times new roman", 12))
@@ -112,6 +112,7 @@ frame_buttons.place(relx= 1, rely= 0.5, anchor= "e")
 def borrar():
     for i in range(5):
         entradas_b[i].delete(0, tk.END)
+        labels_x[i].config(text="")
         for j in range(5):
             entradas_A[i][j].delete(0, tk.END)
 
@@ -147,22 +148,90 @@ def evento_calcular_determinante():
         A = obtener_matriz_datos(dim)
         res = calcular_det_recursivo(A)
         
-        # Muestra el resultado formateado a 2 decimales
-        label_det.config(text=f"{res:.2f}")
+        # Muestra el resultado formateado a 3 decimales
+        label_det.config(text=f"{res:.3f}")
     except ValueError:
         label_notdigit.config(text="Asegurate de completar los campos con números válidos.")
-        
 
+def obtener_vector_b(dim):
+    """Extrae el vector b desde la GUI según la dimensión seleccionada"""
+    b = []
+    for i in range(dim):
+        val = entradas_b[i].get().strip()
+        b.append(float(val) if val else 0.0)
+    return b
+
+def calcular_solucion():
+    try:
+        dim = obtener_dimension_actual()
+        A = obtener_matriz_datos(dim)
+        b = obtener_vector_b(dim)
+        
+        # 1. Determinante principal
+        det_A = calcular_det_recursivo(A)
+        
+        # Actualizar el Label del determinante principal en la GUI
+        label_det.config(text=f"{det_A:.3f}")
+        
+        # Validar caso especial: Sistema no determinado / Sin solución única
+        # usamos el |Det(A)|<1e-9 porque la aritmetica de punto flotante no es precisa del todo
+        # y con esto evitamos que una matriz sin solucion pase por una que si la tiene 
+        if abs(det_A) < 1e-9:
+            label_notdigit.config(text="El det(A) es 0. El sistema no tiene solución o no es única.")
+            for i in range(5):
+                labels_x[i].config(text="")
+            return
+            
+        label_notdigit.config(text="")
+        
+        # 2. Regla de Cramer: reemplazar cada columna por el vector b
+        for j in range(dim):
+            # Copia profunda de A para no alterar la matriz original
+            A_j = copy.deepcopy(A)
+            for i in range(dim):
+                A_j[i][j] = b[i]
+                
+            det_A_j = calcular_det_recursivo(A_j)
+            x_j = det_A_j / det_A
+            
+            # Mostrar resultado en el Label correspondiente de la GUI
+            labels_x[j].config(text=f"{x_j:.3f}")
+            
+        # Limpiar los labels de x sobrantes (si dim < 5)
+        for k in range(dim, 5):
+            labels_x[k].config(text="")
+
+    except ValueError:
+             label_notdigit.config(text="Asegurate de completar los campos con números válidos.")
+
+def actualizar_interfaz_dimension():
+    dim = obtener_dimension_actual()
+    
+    # Recorremos todas las filas y columnas posibles (hasta 5x5)
+    for i in range(5):
+        # Habilitar / Deshabilitar vector b y vector x
+        if i < dim:
+            entradas_b[i].config(state="normal", bg="white")
+
+        else:
+            entradas_b[i].config(state="disabled", disabledbackground="#d9d9d9")
+
+        for j in range(5):
+            # Habilitar / Deshabilitar elementos de la matriz A
+            if i < dim and j < dim:
+                entradas_A[i][j].config(state="normal", bg="white")
+            else:
+                entradas_A[i][j].config(
+                    state="disabled", 
+                    disabledbackground="#d9d9d9"  # Color gris más oscuro
+                )	
 
 button_delete = tk.Button(frame_buttons, text= "Borrar valores", font= ("times new roman", 8),command= borrar
                           ).pack(padx=2, pady= 5)
-button_sist = tk.Button(frame_buttons, text= "Calcular solucion x", font= ("times new roman", 8)
+button_sist = tk.Button(frame_buttons, text= "Calcular solucion x", font= ("times new roman", 8), command= calcular_solucion
                         ).pack(padx= 2, pady= 5)
-#button_det = tk.Button(frame_buttons, text= "Calcular det.", font= ("times new roman", 8)
-#                       ).pack(padx= 2, pady= 5)
+
 tk.Label(frame_buttons, text= "Determinante:", font= ("times new roman", 8)).pack(padx=2, pady= 5)
-#label_det = tk.Label(frame_buttons, text= "", relief= "ridge", font= ("times new roman", 8), borderwidth= 2, width= 8
-#                     ).pack(padx= 2, pady= 5)
 
 label_det = tk.Label(frame_buttons, text="", relief="ridge", font=("times new roman", 8), borderwidth=2, width=8)
 label_det.pack(padx=2, pady=5)
@@ -191,16 +260,15 @@ def pressed(event,dim):
     for i in range(4):
         dimensions[i].config(background= "white")
     event.widget.config(background= "grey")
+    # Actualizamos el estado visual de los Entrys de la matriz A y el vector b
+    actualizar_interfaz_dimension()
+    
 for i in range(4):
     dimensions.append(tk.Button(frame_dimensions, text= f"{i+2} x {i+2}", font= ("times new roman", 8), 
     relief= "sunken", background= "white"))
     dimensions[i].bind("<Button-1>", lambda event, dim=i+2: pressed(event,dim))
     dimensions[i].pack(padx= 2, pady= 2)
 #
-
-
-
-
 
 
 
